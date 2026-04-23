@@ -2,29 +2,39 @@
 // Input: A matrix with integer coefficients
 // Output: Its discriminant group and the quadratic form in Q/2Z
 
+// DiscriminantGroup
+// Input: an integer matrix M
+// Output:
+//   1. the invariant factors of the discriminant group
+//   2. the quadratic form matrix in Q/2Z
+//   3. the generators of the discriminant group as columns in L^vee
+
 function DiscriminantGroup(M)
-    // Compute the Smith Normal Form of the input matrix
     S, A, B := SmithForm(M);
-    // Extract nontrivial diagonal elements of S and their positions
-    l := [[S[i,i], i] : i in [1..NumberOfColumns(S)] | S[i,i] notin {0,1}];
-    // Submatrix of B corresponding to nontrivial elements
-    sA := Matrix(Rationals(), ColumnSubmatrixRange(B, l[1][2], l[#l][2]));
-    // Scale columns by the reciprocal of the diagonal entries
-    for i in [1..#l] do
-        MultiplyColumn(~sA, 1 / l[i][1], i);
+
+    inds := [ i : i in [1..NumberOfColumns(S)] | S[i,i] notin {0,1} ];
+    invs := [ S[i,i] : i in inds ];
+
+    if #inds eq 0 then
+        return [], ZeroMatrix(Rationals(),0,0), ZeroMatrix(Rationals(), NumberOfRows(M), 0);
+    end if;
+
+    gens := Matrix(Rationals(), ColumnSubmatrix(B, inds));
+    for k in [1..#inds] do
+        MultiplyColumn(~gens, 1/invs[k], k);
     end for;
-    // Compute the quadratic form in the scaled basis
-    Q := Transpose(sA) * Matrix(Rationals(), M) * sA;
-    // Reduce entries modulo 2 for the quadratic form
-    for i, j in [1..NumberOfColumns(Q)] do
+
+    Q := Transpose(gens) * Matrix(Rationals(), M) * gens;
+
+    for i, j in [1..NumberOfRows(Q)] do
         if i ne j then
-            Q[i, j] := Q[i, j] - Floor(Q[i, j]);
+            Q[i,j] := Q[i,j] - Floor(Q[i,j]);
         else
-            Q[i, j] := Q[i, j] - Floor(Q[i, j]) + (Floor(Q[i, j]) mod 2);
+            Q[i,j] := Q[i,j] - Floor(Q[i,j]) + (Floor(Q[i,j]) mod 2);
         end if;
     end for;
-    // Return the discriminant group and the quadratic form
-    return [l[i][1] : i in [1..#l]], Q;
+
+    return invs, Q, gens;
 end function;
 
 // MatrixMod2
